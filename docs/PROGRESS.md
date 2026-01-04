@@ -7,6 +7,7 @@
 - 🔜 TC-002E: Persist allowlist + links + inbox to SQLite (stdlib sqlite3)
 - 🔜 TC-002F: Magic link stub (SQLite token + /auth/magic)
 - 🔜 TC-002H: Digest endpoint (group by tag)
+- 🔜 TC-002I: Digest email preview (subject + body, no sending)
 - 🔜 TC-002B: Add /simulate_dm endpoint for local contract testing
 
 ## Task Card 001
@@ -63,3 +64,4 @@ Rollback strategy:
 - 2026-01-04: TC-002E SQLite persistence added
 - 2026-01-04: Queued TC-002F
 - 2026-01-04: Queued TC-002H
+- 2026-01-04: Queued TC-002I

@@ -71,6 +71,13 @@ class DigestOut(BaseModel):
     groups: List[DigestGroup]
 
 
+class DigestEmailPreviewOut(BaseModel):
+    email: str
+    days: int
+    subject: str
+    body: str
+
+
 class AllowlistIn(BaseModel):
     email: str
 
@@ -126,8 +133,7 @@ def get_inbox(email: str) -> InboxOut:
     return InboxOut(email=email, count=len(items), items=items)
 
 
-@app.get("/digest", response_model=DigestOut)
-def get_digest(email: str, days: int = 1) -> DigestOut:
+def build_digest(email: str, days: int) -> tuple[str, List[DigestGroup], int]:
     since = datetime.now(timezone.utc) - timedelta(days=days)
     items = STORE.inbox_list_since(email, since.isoformat(), limit=50)
 
@@ -146,7 +152,8 @@ def get_digest(email: str, days: int = 1) -> DigestOut:
         group_list.append(DigestGroup(tag=tag, count=len(tag_items), items=tag_items))
     group_list.sort(key=lambda g: (-g.count, g.tag))
 
-    lines = [f"Daily Digest (last {days} day) — {email}"]
+    day_label = "day" if days == 1 else "days"
+    lines = [f"Daily Digest (last {days} {day_label}) — {email}"]
     for group in group_list:
         lines.append(f"#{group.tag} ({group.count})")
         for item in group.items:
@@ -155,7 +162,23 @@ def get_digest(email: str, days: int = 1) -> DigestOut:
             else:
                 lines.append(f"- {item.url}")
 
-    return DigestOut(text="\\n".join(lines), groups=group_list)
+    total_count = sum(group.count for group in group_list)
+    return "\\n".join(lines), group_list, total_count
+
+
+@app.get("/digest", response_model=DigestOut)
+def get_digest(email: str, days: int = 1) -> DigestOut:
+    text, groups, _total = build_digest(email, days)
+    return DigestOut(text=text, groups=groups)
+
+
+@app.get("/digest/email_preview", response_model=DigestEmailPreviewOut)
+def get_digest_email_preview(email: str, days: int = 1) -> DigestEmailPreviewOut:
+    text, _groups, total = build_digest(email, days)
+    save_label = "save" if total == 1 else "saves"
+    day_label = "day" if days == 1 else "days"
+    subject = f"NoScroll Digest — {total} {save_label} (last {days} {day_label})"
+    return DigestEmailPreviewOut(email=email, days=days, subject=subject, body=text)
 
 
 @app.post("/admin/allowlist/add")
