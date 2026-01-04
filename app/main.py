@@ -1,4 +1,5 @@
-from typing import List, Literal, Optional
+from datetime import datetime, timezone
+from typing import Dict, List, Literal, Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -6,6 +7,7 @@ from pydantic import BaseModel
 from core.dm_parser import decide_reply, parse_dm
 
 app = FastAPI()
+INBOX: Dict[str, List["InboxItem"]] = {}
 
 
 @app.get("/health")
@@ -33,6 +35,19 @@ class SimulateDMOut(BaseModel):
     parsed: ParsedOut
 
 
+class InboxItem(BaseModel):
+    url: str
+    tags: List[str]
+    note: Optional[str]
+    saved_at: str
+
+
+class InboxOut(BaseModel):
+    email: str
+    count: int
+    items: List[InboxItem]
+
+
 @app.post("/simulate_dm", response_model=SimulateDMOut)
 def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
     parsed = parse_dm(payload.text)
@@ -42,6 +57,13 @@ def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
         allowlisted=payload.allowlisted,
         linked_email=payload.linked_email,
     )
+    if payload.state == "LINKED" and parsed.kind == "link" and payload.linked_email:
+        saved_at = datetime.now(timezone.utc).isoformat()
+        items = [
+            InboxItem(url=url, tags=parsed.tags, note=parsed.note, saved_at=saved_at)
+            for url in parsed.urls
+        ]
+        INBOX.setdefault(payload.linked_email, []).extend(items)
     return SimulateDMOut(
         reply=reply,
         parsed=ParsedOut(
@@ -52,3 +74,9 @@ def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
             note=parsed.note,
         ),
     )
+
+
+@app.get("/inbox", response_model=InboxOut)
+def get_inbox(email: str) -> InboxOut:
+    items = INBOX.get(email, [])
+    return InboxOut(email=email, count=len(items), items=items)
