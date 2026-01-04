@@ -65,3 +65,4 @@ Rollback strategy:
 - 2026-01-04: Queued TC-002F
 - 2026-01-04: Queued TC-002H
 - 2026-01-04: Queued TC-002I
+- 2026-01-04: Added make demo runner (local)

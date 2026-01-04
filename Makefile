@@ -11,3 +11,7 @@ ci: lint test
 
 dev:
 	uv run uvicorn app.main:app --reload --port 8000
+
+# Requires server running via: make dev
+demo:
+	uv run python tools/demo.py
