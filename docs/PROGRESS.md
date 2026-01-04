@@ -2,6 +2,7 @@
 
 ## Now
 - ✅ TC-001: Lock Auth Flow 2 DM command spec + replies (done)
+- 🔜 TC-002: Implement Auth Flow 2 DM parsing + reply templates (code)
 
 ## Task Card 001
 Title: TC-001: Lock Auth Flow 2 DM command spec + replies
