@@ -10,8 +10,18 @@ NoScroll Inbox lets users learn from X without opening X. Users DM a bot with li
 - Auth: Flow 2 (DM-first with email + magic link).
   - User sends DM: start user@email.com
   - System links X handle to email and sends magic link
-- Dashboard (future): Inbox + Categories (per-user enabled) + Search + Daily Digest.
+- Dashboard (MVP): Inbox + Search. Categories + Digest are MVP-later (Phase 1.1).
 - Non-goals for MVP: no For You replication, no auto-scrape 500-1500 per day, no teams, no mobile app, no billing.
+
+## Auth Flow 2 Contract
+- Invite-only allowlist (email allowlist for MVP).
+- DM command: `start user@email.com`.
+- Validations: email format; allowlist check.
+- Outcomes:
+  - If allowed: link sender handle to email, send magic link email, DM confirmation.
+  - If not allowed: DM invite-only / request access message.
+  - If invalid email: DM error + example.
+- Link messages can arrive anytime; if user not linked yet, reply "send start email first".
 
 ## Goals
 - Zero-open X learning flow
@@ -32,7 +42,13 @@ NoScroll Inbox lets users learn from X without opening X. Users DM a bot with li
 - Bot DM intake
 - Link capture and storage
 - Email capture and magic link
-- Basic inbox view (internal prototype)
+- Dashboard (MVP): inbox + search
+
+## Capture Message Formats
+- link-only
+- link + #tag
+- link + note: ...
+- For MVP: store raw + parse URLs; categorize later
 
 ## Out of Scope
 See Non-goals in MVP Contract.

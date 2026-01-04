@@ -9,13 +9,13 @@ This repo is docs-first. Implement only the PRD and Task Cards.
 - Auth: Flow 2 (DM-first with email + magic link).
   - User sends DM: start user@email.com
   - System links X handle to email and sends magic link
-- Dashboard (future): Inbox + Categories (per-user enabled) + Search + Daily Digest.
+- Dashboard (MVP): Inbox + Search. Categories + Digest are MVP-later (Phase 1.1).
 - Non-goals for MVP: no For You replication, no auto-scrape 500-1500 per day, no teams, no mobile app, no billing.
 
 ## Roles
-- Product: defines scope, priorities, and acceptance criteria.
-- Engineering: proposes tasks, estimates, and execution.
-- Design: defines UX copy and flows if needed.
+- ChatGPT = PM + Scope Guardian
+- Ussama = Executioner
+- Codex = Builder/Tester/Reviewer
 
 ## Task Cards
 Each task card lives in docs/PROGRESS.md and includes:
@@ -28,11 +28,20 @@ Each task card lives in docs/PROGRESS.md and includes:
 - Dependencies
 - Test notes
 
+## PM -> Agent Execution Loop
+- PM defines task card and acceptance
+- Builder executes minimal diff
+- Reviewer checks contract alignment
+- PM signs off or revises
+
 ## Definition of Done
-- Requirements met with minimal diff
-- No new deps without approval
-- Tests added once code exists
-- Docs updated as needed
+- Minimal diff
+- Docs updated when contract changes
+- Once code exists: make ci green
+
+## Canonical Commands
+- Environment: uv-first (placeholder; no code yet)
+- Quality: make ci (once added)
 
 ## Guardrails
 - PRD-first, no app code until asked
@@ -40,6 +49,7 @@ Each task card lives in docs/PROGRESS.md and includes:
 - Auth Flow 2 only
 - Do not expand scope without decision entry
 - Keep diffs minimal and reversible
+- No new deps without approval
 
 ## Review Workflow
 - Draft task card
