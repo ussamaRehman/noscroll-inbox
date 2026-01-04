@@ -86,6 +86,11 @@ class SQLiteStore:
             conn.execute("DELETE FROM links")
             conn.commit()
 
+    def link_delete(self, x_handle: str) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM links WHERE x_handle = ?", (x_handle,))
+            conn.commit()
+
     def inbox_add_items(
         self,
         email: str,
@@ -121,9 +126,12 @@ class SQLiteStore:
                 for row in rows
             ]
 
-    def inbox_clear(self) -> None:
+    def inbox_clear(self, email: Optional[str] = None) -> None:
         with self._connect() as conn:
-            conn.execute("DELETE FROM inbox")
+            if email:
+                conn.execute("DELETE FROM inbox WHERE email = ?", (email,))
+            else:
+                conn.execute("DELETE FROM inbox")
             conn.commit()
 
     def inbox_list_since(self, email: str, since_iso: str, limit: int) -> List[Dict[str, object]]:

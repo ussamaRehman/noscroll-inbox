@@ -193,6 +193,14 @@ def allowlist_clear() -> dict:
     return {"count": count}
 
 
+@app.post("/admin/demo/reset")
+def demo_reset() -> dict:
+    STORE.allowlist_clear()
+    STORE.link_delete("demo")
+    STORE.inbox_clear("demo@example.com")
+    return {"ok": True}
+
+
 @app.post("/admin/reset_all")
 def reset_all() -> dict:
     STORE.allowlist_clear()
