@@ -16,7 +16,9 @@ Acceptance:
 - PRD contract updated
 - WORKFLOW aligned
 - Edge cases listed
+Rollback strategy:
+- 1 commit per logical change; revert commit if needed
 
 ## Log
-- YYYY-MM-DD: Repo initialized
+- 2026-01-04: Repo initialized
 - 2026-01-04: Docs polished + TC-001 added

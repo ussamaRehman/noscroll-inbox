@@ -29,10 +29,28 @@ Each task card lives in docs/PROGRESS.md and includes:
 - Test notes
 
 ## PM -> Agent Execution Loop
-- PM defines task card and acceptance
-- Builder executes minimal diff
-- Reviewer checks contract alignment
-- PM signs off or revises
+### Step 0 — PM Task Card (required)
+PM posts a Task Card with:
+- Goal (user-visible)
+- Scope + explicit non-goals
+- Files likely touched (3–8 max)
+- Commands to run (once code exists: include `make ci`)
+- Acceptance checks (3 bullets)
+- Rollback strategy (1 commit per logical change)
+
+### Step 1 — Builder (Codex)
+Builder:
+- Implements minimal diff
+- Lists files touched
+- Lists commands it expects to pass (if code exists)
+- Calls out assumptions and edge cases
+
+### Step 2 — Executioner verification (Ussama)
+- Runs relevant commands (when present) and pastes outputs back to PM
+
+### Step 3 — Reviewer + PM sign-off
+- Reviewer does 2-pass review (correctness/security, then tests/contracts)
+- PM confirms scope + contract alignment and signs off
 
 ## Definition of Done
 - Minimal diff
