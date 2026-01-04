@@ -25,6 +25,7 @@ Rollback strategy:
 Title: TC-002: Implement Auth Flow 2 DM parsing + reply templates (code)
 Goal: Bot enforces invite-only Auth Flow 2 and replies exactly as specified in PRD.
 Scope: DM parsing (`start`, `help`, link messages), allowlist check, state handling, reply templates.
+Subtask: TC-002A: Pure DM parsing + reply selection (code+tests).
 Non-goals: Categories/digest, UI beyond minimal, scraping, billing.
 Acceptance:
 - DM `start email` works (allowlisted and non-allowlisted cases)
