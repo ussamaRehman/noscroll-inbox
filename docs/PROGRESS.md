@@ -3,6 +3,7 @@
 ## Now
 - ✅ TC-001: Lock Auth Flow 2 DM command spec + replies (done)
 - 🔜 TC-002: Implement Auth Flow 2 DM parsing + reply templates (code)
+- 🔜 TC-003: Add FastAPI skeleton + CI commands (code)
 
 ## Task Card 001
 Title: TC-001: Lock Auth Flow 2 DM command spec + replies
@@ -32,6 +33,19 @@ Acceptance:
 Rollback strategy:
 - 1 commit per logical change; revert commit if needed
 
+## Task Card 003
+Title: TC-003: Add FastAPI skeleton + CI commands (code)
+Goal: Repo can run /health and pass make ci.
+Scope: app/main.py, tests, Makefile, pyproject, ruff/pytest.
+Non-goals: DM parsing/auth/UI.
+Acceptance:
+- make ci passes
+- make dev runs
+- /health works
+Rollback strategy:
+- 1 commit per logical change; revert commit if needed
+
 ## Log
 - 2026-01-04: Repo initialized
 - 2026-01-04: Docs polished + TC-001 added
+- 2026-01-04: TC-003 skeleton added
