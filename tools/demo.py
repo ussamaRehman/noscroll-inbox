@@ -2,7 +2,6 @@ import json
 
 import httpx
 
-
 BASE_URL = "http://localhost:8000"
 
 
@@ -16,16 +15,28 @@ def main() -> None:
     with httpx.Client(timeout=10) as client:
         request(client, "POST", "/admin/demo/reset")
         request(client, "POST", "/admin/allowlist/add", json={"email": "demo@example.com"})
-        request(client, "POST", "/simulate_dm", json={"x_handle": "demo", "text": "start demo@example.com"})
+        request(
+            client,
+            "POST",
+            "/simulate_dm",
+            json={"x_handle": "demo", "text": "start demo@example.com"},
+        )
         request(
             client,
             "POST",
             "/simulate_dm",
             json={"x_handle": "demo", "text": "https://x.com/1 #tools note: demo"},
         )
-        request(client, "POST", "/simulate_dm", json={"x_handle": "demo", "text": "https://x.com/2"})
+        request(
+            client, "POST", "/simulate_dm", json={"x_handle": "demo", "text": "https://x.com/2"}
+        )
 
-        digest = request(client, "GET", "/digest", params={"email": "demo@example.com", "days": 365})
+        digest = request(
+            client,
+            "GET",
+            "/digest",
+            params={"email": "demo@example.com", "days": 365},
+        )
         preview = request(
             client,
             "GET",
