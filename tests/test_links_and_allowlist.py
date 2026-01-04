@@ -1,7 +1,17 @@
+import importlib
+import os
+
 from fastapi.testclient import TestClient
 
-from app.main import app
 from core import replies
+
+
+def get_client(tmp_path) -> TestClient:
+    os.environ["DB_PATH"] = str(tmp_path / "test.db")
+    import app.main as main_app
+
+    importlib.reload(main_app)
+    return TestClient(main_app.app)
 
 
 def reset(client: TestClient) -> None:
@@ -12,16 +22,16 @@ def allowlist(client: TestClient, email: str) -> None:
     client.post("/admin/allowlist/add", json={"email": email})
 
 
-def test_start_invalid_email():
-    client = TestClient(app)
+def test_start_invalid_email(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     response = client.post("/simulate_dm", json={"x_handle": "u1", "text": "start abc"})
     assert response.status_code == 200
     assert response.json()["reply"] == replies.REPLY_INVALID_EMAIL
 
 
-def test_start_not_allowlisted():
-    client = TestClient(app)
+def test_start_not_allowlisted(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     response = client.post("/simulate_dm", json={"x_handle": "u1", "text": "start a@b.com"})
     assert response.status_code == 200
@@ -32,8 +42,8 @@ def test_start_not_allowlisted():
     assert inbox.json()["count"] == 0
 
 
-def test_start_allowlisted_links_account():
-    client = TestClient(app)
+def test_start_allowlisted_links_account(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     allowlist(client, "user@example.com")
     response = client.post(
@@ -46,8 +56,8 @@ def test_start_allowlisted_links_account():
     assert link.json()["reply"] == replies.REPLY_SAVED
 
 
-def test_link_before_start():
-    client = TestClient(app)
+def test_link_before_start(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     response = client.post("/simulate_dm", json={"x_handle": "u1", "text": "https://x.com/1"})
     assert response.status_code == 200
@@ -56,8 +66,8 @@ def test_link_before_start():
     assert inbox.json()["count"] == 0
 
 
-def test_start_again_same_email():
-    client = TestClient(app)
+def test_start_again_same_email(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     allowlist(client, "user@example.com")
     client.post("/simulate_dm", json={"x_handle": "u1", "text": "start user@example.com"})
@@ -69,8 +79,8 @@ def test_start_again_same_email():
     assert response.json()["reply"] == replies.REPLY_RESEND
 
 
-def test_start_with_different_email_after_linked():
-    client = TestClient(app)
+def test_start_with_different_email_after_linked(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     allowlist(client, "user@example.com")
     allowlist(client, "other@example.com")
@@ -83,8 +93,8 @@ def test_start_with_different_email_after_linked():
     assert response.json()["reply"] == replies.REPLY_ALREADY_LINKED
 
 
-def test_isolated_by_handle():
-    client = TestClient(app)
+def test_isolated_by_handle(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     allowlist(client, "a@example.com")
     allowlist(client, "b@example.com")

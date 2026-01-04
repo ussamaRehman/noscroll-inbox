@@ -1,6 +1,15 @@
+import importlib
+import os
+
 from fastapi.testclient import TestClient
 
-from app.main import app
+
+def get_client(tmp_path) -> TestClient:
+    os.environ["DB_PATH"] = str(tmp_path / "test.db")
+    import app.main as main_app
+
+    importlib.reload(main_app)
+    return TestClient(main_app.app)
 
 
 def reset(client: TestClient) -> None:
@@ -11,8 +20,8 @@ def allowlist(client: TestClient, email: str) -> None:
     client.post("/admin/allowlist/add", json={"email": email})
 
 
-def test_saving_flow_and_inbox():
-    client = TestClient(app)
+def test_saving_flow_and_inbox(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     allowlist(client, "user@example.com")
     start_payload = {"x_handle": "user", "text": "start user@example.com"}
@@ -33,8 +42,8 @@ def test_saving_flow_and_inbox():
     assert data["items"][0]["saved_at"]
 
 
-def test_cap_saves_at_five():
-    client = TestClient(app)
+def test_cap_saves_at_five(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     allowlist(client, "a@b.com")
     start_payload = {"x_handle": "a", "text": "start a@b.com"}
@@ -48,8 +57,8 @@ def test_cap_saves_at_five():
     assert inbox.json()["count"] == 5
 
 
-def test_isolated_inboxes():
-    client = TestClient(app)
+def test_isolated_inboxes(tmp_path):
+    client = get_client(tmp_path)
     reset(client)
     allowlist(client, "a@example.com")
     allowlist(client, "b@example.com")

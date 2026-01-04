@@ -1,19 +1,20 @@
 import os
 from datetime import datetime, timezone
-from typing import Dict, List, Literal, Optional, Set
+from typing import List, Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 from core import replies
-from core.dm_parser import decide_reply, parse_dm
+from core.dm_parser import decide_reply, is_valid_email, parse_dm
+from storage.sqlite_store import SQLiteStore
 
 app = FastAPI()
-ALLOWLIST: Set[str] = {
-    email.strip() for email in os.getenv("ALLOWLIST_EMAILS", "").split(",") if email.strip()
-}
-USER_LINKS: Dict[str, str] = {}
-INBOX: Dict[str, List["InboxItem"]] = {}
+STORE = SQLiteStore(os.getenv("DB_PATH", "noscroll.db"))
+STORE.init_db()
+for email in os.getenv("ALLOWLIST_EMAILS", "").split(","):
+    if email.strip():
+        STORE.allowlist_add(email.strip())
 
 
 @app.get("/health")
@@ -59,31 +60,30 @@ class AllowlistIn(BaseModel):
 @app.post("/simulate_dm", response_model=SimulateDMOut)
 def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
     parsed = parse_dm(payload.text)
-    linked_email = USER_LINKS.get(payload.x_handle)
-    state: Literal["UNLINKED", "LINKED"] = "LINKED" if linked_email else "UNLINKED"
+    linked_email = STORE.link_get_email(payload.x_handle)
+    state = "LINKED" if linked_email else "UNLINKED"
 
     if parsed.kind == "start":
         email = parsed.start_email or ""
-        allowlisted = email in ALLOWLIST
-        reply = decide_reply(
-            state,
-            parsed,
-            allowlisted=allowlisted,
-            linked_email=linked_email,
-        )
-        if reply == replies.REPLY_LINKED:
-            USER_LINKS[payload.x_handle] = email
-            linked_email = email
+        if not is_valid_email(email):
+            reply = replies.REPLY_INVALID_EMAIL
+        elif not STORE.allowlist_contains(email):
+            reply = replies.REPLY_NOT_ALLOWLISTED
+        else:
+            result = STORE.link_set_if_unlinked(payload.x_handle, email)
+            if result == "linked":
+                reply = replies.REPLY_LINKED
+                linked_email = email
+            elif result == "resend":
+                reply = replies.REPLY_RESEND
+            else:
+                reply = replies.REPLY_ALREADY_LINKED
     else:
         reply = decide_reply(state, parsed, allowlisted=False, linked_email=linked_email)
 
     if parsed.kind == "link" and linked_email:
         saved_at = datetime.now(timezone.utc).isoformat()
-        items = [
-            InboxItem(url=url, tags=parsed.tags, note=parsed.note, saved_at=saved_at)
-            for url in parsed.urls
-        ]
-        INBOX.setdefault(linked_email, []).extend(items)
+        STORE.inbox_add_items(linked_email, parsed.urls, parsed.tags, parsed.note, saved_at)
     return SimulateDMOut(
         reply=reply,
         parsed=ParsedOut(
@@ -98,25 +98,25 @@ def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
 
 @app.get("/inbox", response_model=InboxOut)
 def get_inbox(email: str) -> InboxOut:
-    items = INBOX.get(email, [])
+    items = [InboxItem(**item) for item in STORE.inbox_list(email)]
     return InboxOut(email=email, count=len(items), items=items)
 
 
 @app.post("/admin/allowlist/add")
 def allowlist_add(payload: AllowlistIn) -> dict:
-    ALLOWLIST.add(payload.email)
-    return {"count": len(ALLOWLIST)}
+    count = STORE.allowlist_add(payload.email)
+    return {"count": count}
 
 
 @app.post("/admin/allowlist/clear")
 def allowlist_clear() -> dict:
-    ALLOWLIST.clear()
-    return {"count": 0}
+    count = STORE.allowlist_clear()
+    return {"count": count}
 
 
 @app.post("/admin/reset_all")
 def reset_all() -> dict:
-    ALLOWLIST.clear()
-    USER_LINKS.clear()
-    INBOX.clear()
+    STORE.allowlist_clear()
+    STORE.links_clear()
+    STORE.inbox_clear()
     return {"ok": True}

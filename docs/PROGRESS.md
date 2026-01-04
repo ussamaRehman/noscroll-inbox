@@ -4,6 +4,7 @@
 - ✅ TC-001: Lock Auth Flow 2 DM command spec + replies (done)
 - ✅ TC-003: Add FastAPI skeleton + CI commands (code) (done)
 - 🔜 TC-002: Implement Auth Flow 2 DM parsing + reply templates (code)
+- 🔜 TC-002E: Persist allowlist + links + inbox to SQLite (stdlib sqlite3)
 - 🔜 TC-002B: Add /simulate_dm endpoint for local contract testing
 
 ## Task Card 001
@@ -57,3 +58,4 @@ Rollback strategy:
 - 2026-01-04: TC-002B /simulate_dm added
 - 2026-01-04: TC-002C in-memory inbox added
 - 2026-01-04: TC-002D x_handle linking + allowlist added
+- 2026-01-04: TC-002E SQLite persistence added
