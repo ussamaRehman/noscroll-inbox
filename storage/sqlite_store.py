@@ -126,6 +126,25 @@ class SQLiteStore:
             conn.execute("DELETE FROM inbox")
             conn.commit()
 
+    def inbox_list_since(self, email: str, since_iso: str, limit: int) -> List[Dict[str, object]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT url, tags_json, note, saved_at FROM inbox "
+                "WHERE email = ? AND saved_at >= ? "
+                "ORDER BY saved_at DESC, id DESC "
+                "LIMIT ?",
+                (email, since_iso, limit),
+            ).fetchall()
+            return [
+                {
+                    "url": row["url"],
+                    "tags": json.loads(row["tags_json"]),
+                    "note": row["note"],
+                    "saved_at": row["saved_at"],
+                }
+                for row in rows
+            ]
+
     def magic_create(self, email: str, ttl_seconds: int = 900) -> str:
         now = datetime.now(timezone.utc)
         token = secrets.token_urlsafe(32)

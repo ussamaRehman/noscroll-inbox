@@ -1,6 +1,6 @@
 import os
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -52,6 +52,23 @@ class InboxOut(BaseModel):
     email: str
     count: int
     items: List[InboxItem]
+
+
+class DigestItem(BaseModel):
+    url: str
+    note: Optional[str]
+    saved_at: str
+
+
+class DigestGroup(BaseModel):
+    tag: str
+    count: int
+    items: List[DigestItem]
+
+
+class DigestOut(BaseModel):
+    text: str
+    groups: List[DigestGroup]
 
 
 class AllowlistIn(BaseModel):
@@ -107,6 +124,38 @@ def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
 def get_inbox(email: str) -> InboxOut:
     items = [InboxItem(**item) for item in STORE.inbox_list(email)]
     return InboxOut(email=email, count=len(items), items=items)
+
+
+@app.get("/digest", response_model=DigestOut)
+def get_digest(email: str, days: int = 1) -> DigestOut:
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    items = STORE.inbox_list_since(email, since.isoformat(), limit=50)
+
+    groups: Dict[str, List[DigestItem]] = {}
+    for item in items:
+        tags = item["tags"] or []
+        target_tags = tags if tags else ["untagged"]
+        for tag in target_tags:
+            groups.setdefault(tag, []).append(
+                DigestItem(url=item["url"], note=item["note"], saved_at=item["saved_at"])
+            )
+
+    group_list = []
+    for tag, tag_items in groups.items():
+        tag_items.sort(key=lambda x: x.saved_at, reverse=True)
+        group_list.append(DigestGroup(tag=tag, count=len(tag_items), items=tag_items))
+    group_list.sort(key=lambda g: (-g.count, g.tag))
+
+    lines = [f"Daily Digest (last {days} day) — {email}"]
+    for group in group_list:
+        lines.append(f"#{group.tag} ({group.count})")
+        for item in group.items:
+            if item.note:
+                lines.append(f"- {item.url} — note: {item.note}")
+            else:
+                lines.append(f"- {item.url}")
+
+    return DigestOut(text="\\n".join(lines), groups=group_list)
 
 
 @app.post("/admin/allowlist/add")
