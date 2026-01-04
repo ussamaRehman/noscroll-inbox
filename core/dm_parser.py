@@ -1,12 +1,13 @@
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 from typing import List, Optional
 
 from core import replies
 
-EMAIL_RE = re.compile(r"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
-URL_RE = re.compile(r"https?://\\S+")
-TAG_RE = re.compile(r"(?:^|\\s)#(\\w+)")
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+URL_RE = re.compile(r"https?://\S+")
+TAG_RE = re.compile(r"#([A-Za-z0-9_]+)")
+NOTE_RE = re.compile(r"(?i)\bnote:\s*(.+)$")
 
 
 @dataclass(frozen=True)
@@ -16,34 +17,32 @@ class ParsedMessage:
     urls: List[str]
     tags: List[str]
     note: Optional[str]
+    raw: str
 
 
 def parse_dm(message: str) -> ParsedMessage:
-    text = message.strip()
-    lower = text.lower()
+    raw = message.strip()
+    lower = raw.lower()
+
+    urls = URL_RE.findall(raw)[:5]
+    tags = TAG_RE.findall(raw)
+
+    note = None
+    note_match = NOTE_RE.search(raw)
+    if note_match:
+        note = note_match.group(1).strip()
 
     start_email = None
     if lower.startswith("start"):
-        match = re.match(r"^start\\s+(\\S+)", text, flags=re.IGNORECASE)
-        if match:
-            start_email = match.group(1)
-            kind = "start"
-        else:
-            kind = "unknown"
+        parts = raw.split()
+        start_email = parts[1] if len(parts) > 1 else None
+        kind = "start"
     elif lower.startswith("help"):
         kind = "help"
-    elif URL_RE.search(text):
+    elif urls:
         kind = "link"
     else:
         kind = "unknown"
-
-    urls = URL_RE.findall(text)[:5]
-    tags = TAG_RE.findall(text)
-
-    note = None
-    note_index = lower.find("note:")
-    if note_index != -1:
-        note = text[note_index + len("note:") :].strip()
 
     return ParsedMessage(
         kind=kind,
@@ -51,6 +50,7 @@ def parse_dm(message: str) -> ParsedMessage:
         urls=urls,
         tags=tags,
         note=note,
+        raw=raw,
     )
 
 
@@ -62,14 +62,13 @@ def decide_reply(
     state: str,
     parsed: ParsedMessage,
     allowlisted: bool,
-    start_email: Optional[str] = None,
     linked_email: Optional[str] = None,
 ) -> str:
     if parsed.kind == "help":
         return replies.REPLY_HELP
 
     if parsed.kind == "start":
-        email = start_email or parsed.start_email or ""
+        email = parsed.start_email or ""
         if not is_valid_email(email):
             return replies.REPLY_INVALID_EMAIL
 

@@ -1,5 +1,5 @@
 from core import replies
-from core.dm_parser import ParsedMessage, decide_reply, parse_dm
+from core.dm_parser import decide_reply, parse_dm
 
 
 def test_unlinked_invalid_email():
