@@ -1,19 +1,25 @@
-import fastapi.testclient as testclient
+from fastapi.testclient import TestClient
 
-import app.main as main_app
+from app.main import app
 
 
-def setup_function():
-    main_app.INBOX.clear()
+def reset(client: TestClient) -> None:
+    client.post("/admin/reset_all")
+
+
+def allowlist(client: TestClient, email: str) -> None:
+    client.post("/admin/allowlist/add", json={"email": email})
 
 
 def test_saving_flow_and_inbox():
-    client = testclient.TestClient(main_app.app)
+    client = TestClient(app)
+    reset(client)
+    allowlist(client, "user@example.com")
+    start_payload = {"x_handle": "user", "text": "start user@example.com"}
+    client.post("/simulate_dm", json=start_payload)
     payload = {
-        "state": "LINKED",
+        "x_handle": "user",
         "text": "https://x.com/1 https://x.com/2 #tools note: new eval framework",
-        "allowlisted": True,
-        "linked_email": "user@example.com",
     }
     response = client.post("/simulate_dm", json=payload)
     assert response.status_code == 200
@@ -28,9 +34,13 @@ def test_saving_flow_and_inbox():
 
 
 def test_cap_saves_at_five():
-    client = testclient.TestClient(main_app.app)
+    client = TestClient(app)
+    reset(client)
+    allowlist(client, "a@b.com")
+    start_payload = {"x_handle": "a", "text": "start a@b.com"}
+    client.post("/simulate_dm", json=start_payload)
     message = " ".join([f"https://x.com/{i}" for i in range(10)])
-    payload = {"state": "LINKED", "text": message, "allowlisted": True, "linked_email": "a@b.com"}
+    payload = {"x_handle": "a", "text": message}
     response = client.post("/simulate_dm", json=payload)
     assert response.status_code == 200
 
@@ -39,21 +49,14 @@ def test_cap_saves_at_five():
 
 
 def test_isolated_inboxes():
-    client = testclient.TestClient(main_app.app)
-    payload_a = {
-        "state": "LINKED",
-        "text": "https://x.com/a",
-        "allowlisted": True,
-        "linked_email": "a@example.com",
-    }
-    payload_b = {
-        "state": "LINKED",
-        "text": "https://x.com/b",
-        "allowlisted": True,
-        "linked_email": "b@example.com",
-    }
-    client.post("/simulate_dm", json=payload_a)
-    client.post("/simulate_dm", json=payload_b)
+    client = TestClient(app)
+    reset(client)
+    allowlist(client, "a@example.com")
+    allowlist(client, "b@example.com")
+    client.post("/simulate_dm", json={"x_handle": "a", "text": "start a@example.com"})
+    client.post("/simulate_dm", json={"x_handle": "b", "text": "start b@example.com"})
+    client.post("/simulate_dm", json={"x_handle": "a", "text": "https://x.com/a"})
+    client.post("/simulate_dm", json={"x_handle": "b", "text": "https://x.com/b"})
 
     inbox_a = client.get("/inbox", params={"email": "a@example.com"})
     inbox_b = client.get("/inbox", params={"email": "b@example.com"})
