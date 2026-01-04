@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from core import replies
@@ -38,6 +38,7 @@ class ParsedOut(BaseModel):
 class SimulateDMOut(BaseModel):
     reply: str
     parsed: ParsedOut
+    magic_link: Optional[str] = None
 
 
 class InboxItem(BaseModel):
@@ -62,6 +63,7 @@ def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
     parsed = parse_dm(payload.text)
     linked_email = STORE.link_get_email(payload.x_handle)
     state = "LINKED" if linked_email else "UNLINKED"
+    magic_link = None
 
     if parsed.kind == "start":
         email = parsed.start_email or ""
@@ -74,8 +76,12 @@ def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
             if result == "linked":
                 reply = replies.REPLY_LINKED
                 linked_email = email
+                token = STORE.magic_create(email)
+                magic_link = f"http://localhost:8000/auth/magic?token={token}"
             elif result == "resend":
                 reply = replies.REPLY_RESEND
+                token = STORE.magic_create(email)
+                magic_link = f"http://localhost:8000/auth/magic?token={token}"
             else:
                 reply = replies.REPLY_ALREADY_LINKED
     else:
@@ -93,6 +99,7 @@ def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
             tags=parsed.tags,
             note=parsed.note,
         ),
+        magic_link=magic_link,
     )
 
 
@@ -119,4 +126,21 @@ def reset_all() -> dict:
     STORE.allowlist_clear()
     STORE.links_clear()
     STORE.inbox_clear()
+    STORE.magic_clear()
     return {"ok": True}
+
+
+@app.get("/auth/magic")
+def auth_magic(token: str) -> dict:
+    try:
+        email = STORE.magic_redeem(token)
+    except ValueError as exc:
+        detail = str(exc)
+        if detail == "invalid":
+            raise HTTPException(status_code=400, detail="invalid token")
+        if detail == "used":
+            raise HTTPException(status_code=400, detail="token already used")
+        if detail == "expired":
+            raise HTTPException(status_code=400, detail="token expired")
+        raise HTTPException(status_code=400, detail="invalid token")
+    return {"ok": True, "email": email}

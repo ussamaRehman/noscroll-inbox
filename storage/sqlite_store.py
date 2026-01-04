@@ -1,5 +1,7 @@
 import json
+import secrets
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 
@@ -26,6 +28,14 @@ class SQLiteStore:
                 "tags_json TEXT NOT NULL, "
                 "note TEXT, "
                 "saved_at TEXT NOT NULL)"
+            )
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS magic_tokens ("
+                "token TEXT PRIMARY KEY, "
+                "email TEXT NOT NULL, "
+                "created_at TEXT NOT NULL, "
+                "expires_at TEXT NOT NULL, "
+                "used_at TEXT)"
             )
             conn.commit()
 
@@ -114,4 +124,44 @@ class SQLiteStore:
     def inbox_clear(self) -> None:
         with self._connect() as conn:
             conn.execute("DELETE FROM inbox")
+            conn.commit()
+
+    def magic_create(self, email: str, ttl_seconds: int = 900) -> str:
+        now = datetime.now(timezone.utc)
+        token = secrets.token_urlsafe(32)
+        created_at = now.isoformat()
+        expires_at = (now + timedelta(seconds=ttl_seconds)).isoformat()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO magic_tokens(token, email, created_at, expires_at, used_at) "
+                "VALUES (?, ?, ?, ?, NULL)",
+                (token, email, created_at, expires_at),
+            )
+            conn.commit()
+        return token
+
+    def magic_redeem(self, token: str) -> str:
+        now = datetime.now(timezone.utc)
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT email, expires_at, used_at FROM magic_tokens WHERE token = ?",
+                (token,),
+            ).fetchone()
+            if not row:
+                raise ValueError("invalid")
+            if row["used_at"]:
+                raise ValueError("used")
+            expires_at = datetime.fromisoformat(row["expires_at"])
+            if now > expires_at:
+                raise ValueError("expired")
+            conn.execute(
+                "UPDATE magic_tokens SET used_at = ? WHERE token = ?",
+                (now.isoformat(), token),
+            )
+            conn.commit()
+            return row["email"]
+
+    def magic_clear(self) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM magic_tokens")
             conn.commit()
