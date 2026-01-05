@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timezone
 from typing import List
 
-from app.main import build_digest
+from core.digest import build_email_preview
 from storage.sqlite_store import SQLiteStore
 
 
@@ -21,10 +21,7 @@ def run_send_digests(
             lines.append(f"SKIP {email} (already sent)")
             skip_count += 1
             continue
-        body, _groups, total = build_digest(email, days, store=store)
-        save_label = "save" if total == 1 else "saves"
-        day_label = "day" if days == 1 else "days"
-        subject = f"NoScroll Digest — {total} {save_label} (last {days} {day_label})"
+        subject, body, total = build_email_preview(email, days, store=store)
         store.digest_send_put(email, days, date_utc, total, subject, body)
         lines.append(f"SENT {email} total={total}")
         sent_count += 1

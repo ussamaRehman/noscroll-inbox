@@ -1,11 +1,12 @@
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from datetime import datetime, timezone
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from core import replies
+from core.digest import build_digest, build_email_preview
 from core.dm_parser import decide_reply, is_valid_email, parse_dm
 from storage.sqlite_store import SQLiteStore
 
@@ -148,62 +149,29 @@ def get_inbox(email: str) -> InboxOut:
     return InboxOut(email=email, count=len(items), items=items)
 
 
-def build_digest(
-    email: str, days: int, store: SQLiteStore = STORE
-) -> tuple[str, List[DigestGroup], int]:
-    since = datetime.now(timezone.utc) - timedelta(days=days)
-    items = store.inbox_list_since(email, since.isoformat(), limit=50)
-
-    groups: Dict[str, List[DigestItem]] = {}
-    for item in items:
-        tags = item["tags"] or []
-        target_tags = tags if tags else ["untagged"]
-        for tag in target_tags:
-            groups.setdefault(tag, []).append(
-                DigestItem(url=item["url"], note=item["note"], saved_at=item["saved_at"])
-            )
-
-    group_list = []
-    for tag, tag_items in groups.items():
-        tag_items.sort(key=lambda x: x.saved_at, reverse=True)
-        group_list.append(DigestGroup(tag=tag, count=len(tag_items), items=tag_items))
-    group_list.sort(key=lambda g: (-g.count, g.tag))
-
-    day_label = "day" if days == 1 else "days"
-    lines = [f"Daily Digest (last {days} {day_label}) — {email}"]
-    for group in group_list:
-        lines.append(f"#{group.tag} ({group.count})")
-        for item in group.items:
-            if item.note:
-                lines.append(f"- {item.url} — note: {item.note}")
-            else:
-                lines.append(f"- {item.url}")
-
-    total_count = sum(group.count for group in group_list)
-    return "\\n".join(lines), group_list, total_count
-
-
 @app.get("/digest", response_model=DigestOut)
 def get_digest(email: str, days: int = 1) -> DigestOut:
-    text, groups, _total = build_digest(email, days)
-    return DigestOut(text=text, groups=groups)
+    text, groups, _total = build_digest(email, days, store=STORE)
+    group_models = [
+        DigestGroup(
+            tag=group["tag"],
+            count=group["count"],
+            items=[DigestItem(**item.__dict__) for item in group["items"]],
+        )
+        for group in groups
+    ]
+    return DigestOut(text=text, groups=group_models)
 
 
 @app.get("/digest/email_preview", response_model=DigestEmailPreviewOut)
 def get_digest_email_preview(email: str, days: int = 1) -> DigestEmailPreviewOut:
-    text, _groups, total = build_digest(email, days)
-    save_label = "save" if total == 1 else "saves"
-    day_label = "day" if days == 1 else "days"
-    subject = f"NoScroll Digest — {total} {save_label} (last {days} {day_label})"
+    subject, text, _total = build_email_preview(email, days, store=STORE)
     return DigestEmailPreviewOut(email=email, days=days, subject=subject, body=text)
 
 
 @app.post("/digest/send_preview", response_model=DigestSendPreviewOut)
 def send_digest_preview(payload: DigestSendPreviewIn) -> DigestSendPreviewOut:
-    text, _groups, total = build_digest(payload.email, payload.days)
-    save_label = "save" if total == 1 else "saves"
-    day_label = "day" if payload.days == 1 else "days"
-    subject = f"NoScroll Digest — {total} {save_label} (last {payload.days} {day_label})"
+    subject, text, total = build_email_preview(payload.email, payload.days, store=STORE)
     date_utc = datetime.now(timezone.utc).date().isoformat()
     existing = STORE.digest_send_get(payload.email, payload.days, date_utc)
     if existing:
