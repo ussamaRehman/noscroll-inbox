@@ -78,6 +78,21 @@ class DigestEmailPreviewOut(BaseModel):
     body: str
 
 
+class DigestSendPreviewIn(BaseModel):
+    email: str
+    days: int = 1
+
+
+class DigestSendPreviewOut(BaseModel):
+    already_sent: bool
+    email: str
+    days: int
+    date_utc: str
+    total: int
+    subject: str
+    body: str
+
+
 class AllowlistIn(BaseModel):
     email: str
 
@@ -181,6 +196,28 @@ def get_digest_email_preview(email: str, days: int = 1) -> DigestEmailPreviewOut
     return DigestEmailPreviewOut(email=email, days=days, subject=subject, body=text)
 
 
+@app.post("/digest/send_preview", response_model=DigestSendPreviewOut)
+def send_digest_preview(payload: DigestSendPreviewIn) -> DigestSendPreviewOut:
+    text, _groups, total = build_digest(payload.email, payload.days)
+    save_label = "save" if total == 1 else "saves"
+    day_label = "day" if payload.days == 1 else "days"
+    subject = f"NoScroll Digest — {total} {save_label} (last {payload.days} {day_label})"
+    date_utc = datetime.now(timezone.utc).date().isoformat()
+    existing = STORE.digest_send_get(payload.email, payload.days, date_utc)
+    if existing:
+        return DigestSendPreviewOut(already_sent=True, **existing)
+    STORE.digest_send_put(payload.email, payload.days, date_utc, total, subject, text)
+    return DigestSendPreviewOut(
+        already_sent=False,
+        email=payload.email,
+        days=payload.days,
+        date_utc=date_utc,
+        total=total,
+        subject=subject,
+        body=text,
+    )
+
+
 @app.post("/admin/allowlist/add")
 def allowlist_add(payload: AllowlistIn) -> dict:
     count = STORE.allowlist_add(payload.email)
@@ -191,6 +228,12 @@ def allowlist_add(payload: AllowlistIn) -> dict:
 def allowlist_clear() -> dict:
     count = STORE.allowlist_clear()
     return {"count": count}
+
+
+@app.get("/admin/digest_sends")
+def digest_sends(email: str, days: int = 1) -> dict:
+    items = STORE.digest_send_list(email, days)
+    return {"count": len(items), "items": items}
 
 
 @app.post("/admin/demo/reset")
@@ -207,6 +250,7 @@ def reset_all() -> dict:
     STORE.links_clear()
     STORE.inbox_clear()
     STORE.magic_clear()
+    STORE.digest_sends_clear()
     return {"ok": True}
 
 

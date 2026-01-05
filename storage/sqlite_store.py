@@ -37,6 +37,17 @@ class SQLiteStore:
                 "expires_at TEXT NOT NULL, "
                 "used_at TEXT)"
             )
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS digest_sends ("
+                "email TEXT NOT NULL, "
+                "days INTEGER NOT NULL, "
+                "date_utc TEXT NOT NULL, "
+                "total INTEGER NOT NULL, "
+                "subject TEXT NOT NULL, "
+                "body TEXT NOT NULL, "
+                "sent_at TEXT NOT NULL, "
+                "PRIMARY KEY (email, days, date_utc))"
+            )
             conn.commit()
 
     def allowlist_add(self, email: str) -> int:
@@ -191,4 +202,66 @@ class SQLiteStore:
     def magic_clear(self) -> None:
         with self._connect() as conn:
             conn.execute("DELETE FROM magic_tokens")
+            conn.commit()
+
+    def digest_send_get(self, email: str, days: int, date_utc: str) -> Optional[Dict[str, object]]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT email, days, date_utc, total, subject, body, sent_at "
+                "FROM digest_sends WHERE email = ? AND days = ? AND date_utc = ?",
+                (email, days, date_utc),
+            ).fetchone()
+            if not row:
+                return None
+            return {
+                "email": row["email"],
+                "days": row["days"],
+                "date_utc": row["date_utc"],
+                "total": row["total"],
+                "subject": row["subject"],
+                "body": row["body"],
+                "sent_at": row["sent_at"],
+            }
+
+    def digest_send_put(
+        self,
+        email: str,
+        days: int,
+        date_utc: str,
+        total: int,
+        subject: str,
+        body: str,
+    ) -> None:
+        sent_at = datetime.now(timezone.utc).isoformat()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO digest_sends(email, days, date_utc, total, subject, body, sent_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (email, days, date_utc, total, subject, body, sent_at),
+            )
+            conn.commit()
+
+    def digest_send_list(self, email: str, days: int) -> List[Dict[str, object]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT email, days, date_utc, total, subject, body, sent_at "
+                "FROM digest_sends WHERE email = ? AND days = ? ORDER BY sent_at DESC",
+                (email, days),
+            ).fetchall()
+            return [
+                {
+                    "email": row["email"],
+                    "days": row["days"],
+                    "date_utc": row["date_utc"],
+                    "total": row["total"],
+                    "subject": row["subject"],
+                    "body": row["body"],
+                    "sent_at": row["sent_at"],
+                }
+                for row in rows
+            ]
+
+    def digest_sends_clear(self) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM digest_sends")
             conn.commit()
