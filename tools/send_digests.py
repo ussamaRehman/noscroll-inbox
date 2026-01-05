@@ -29,8 +29,8 @@ def run_send_digests(
 
 
 def main() -> None:
-    db_path = os.getenv("DB_PATH", "noscroll.db")
-    store = SQLiteStore(db_path)
+    db_path = os.environ.get("DB_PATH", "noscroll.db")
+    store = SQLiteStore(db_path=db_path)
     store.init_db()
 
     email = os.getenv("EMAIL")

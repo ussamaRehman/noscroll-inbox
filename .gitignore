@@ -26,6 +26,7 @@ Thumbs.db
 .idea/
 
 # SQLite
+*.db
 noscroll.db
 noscroll.db-journal
 noscroll.db-wal

@@ -11,7 +11,8 @@ from core.dm_parser import decide_reply, is_valid_email, parse_dm
 from storage.sqlite_store import SQLiteStore
 
 app = FastAPI()
-STORE = SQLiteStore(os.getenv("DB_PATH", "noscroll.db"))
+db_path = os.environ.get("DB_PATH", "noscroll.db")
+STORE = SQLiteStore(db_path=db_path)
 STORE.init_db()
 for email in os.getenv("ALLOWLIST_EMAILS", "").split(","):
     if email.strip():
