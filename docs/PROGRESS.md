@@ -9,6 +9,7 @@
 - 🔜 TC-002H: Digest endpoint (group by tag)
 - 🔜 TC-002I: Digest email preview (subject + body, no sending)
 - 🔜 TC-002J: Digest send dry-run + sent-log (sqlite)
+- 🔜 TC-002K: CLI send-digests runner (dry-run)
 - 🔜 TC-002B: Add /simulate_dm endpoint for local contract testing
 
 ## Task Card 001
@@ -67,4 +68,5 @@ Rollback strategy:
 - 2026-01-04: Queued TC-002H
 - 2026-01-04: Queued TC-002I
 - 2026-01-05: Added TC-002J
+- 2026-01-05: Added TC-002K
 - 2026-01-04: Added make demo runner (local)

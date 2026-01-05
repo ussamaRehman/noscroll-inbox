@@ -148,9 +148,11 @@ def get_inbox(email: str) -> InboxOut:
     return InboxOut(email=email, count=len(items), items=items)
 
 
-def build_digest(email: str, days: int) -> tuple[str, List[DigestGroup], int]:
+def build_digest(
+    email: str, days: int, store: SQLiteStore = STORE
+) -> tuple[str, List[DigestGroup], int]:
     since = datetime.now(timezone.utc) - timedelta(days=days)
-    items = STORE.inbox_list_since(email, since.isoformat(), limit=50)
+    items = store.inbox_list_since(email, since.isoformat(), limit=50)
 
     groups: Dict[str, List[DigestItem]] = {}
     for item in items:

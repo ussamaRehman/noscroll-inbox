@@ -97,6 +97,15 @@ class SQLiteStore:
             conn.execute("DELETE FROM links")
             conn.commit()
 
+    def list_linked_emails(self) -> List[str]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT email FROM ("
+                "SELECT email FROM links UNION SELECT email FROM inbox"
+                ") ORDER BY email"
+            ).fetchall()
+            return [row["email"] for row in rows]
+
     def link_delete(self, x_handle: str) -> None:
         with self._connect() as conn:
             conn.execute("DELETE FROM links WHERE x_handle = ?", (x_handle,))

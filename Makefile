@@ -15,3 +15,7 @@ dev:
 # Requires server running via: make dev
 demo:
 	uv run python tools/demo.py
+
+# Example: EMAIL=demo@example.com DAYS=365 make send-digests
+send-digests:
+	uv run python tools/send_digests.py
