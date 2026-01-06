@@ -274,3 +274,30 @@ class SQLiteStore:
         with self._connect() as conn:
             conn.execute("DELETE FROM digest_sends")
             conn.commit()
+
+    def reset_demo(self, email: str, x_handle: str) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM allowlist WHERE email = ?", (email,))
+            conn.execute("DELETE FROM links WHERE x_handle = ? OR email = ?", (x_handle, email))
+            conn.execute("DELETE FROM inbox WHERE email = ?", (email,))
+            conn.execute("DELETE FROM digest_sends WHERE email = ?", (email,))
+            conn.commit()
+
+    def seed_demo(self, email: str, x_handle: str) -> None:
+        self.allowlist_add(email)
+        self.link_set_if_unlinked(x_handle, email)
+        saved_at = datetime.now(timezone.utc).isoformat()
+        self.inbox_add_items(
+            email,
+            ["https://x.com/1"],
+            ["tools"],
+            "demo",
+            saved_at,
+        )
+        self.inbox_add_items(
+            email,
+            ["https://x.com/2"],
+            [],
+            None,
+            saved_at,
+        )

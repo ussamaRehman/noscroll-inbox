@@ -14,22 +14,6 @@ def request(client: httpx.Client, method: str, path: str, **kwargs) -> httpx.Res
 def main() -> None:
     with httpx.Client(timeout=10) as client:
         request(client, "POST", "/admin/demo/reset")
-        request(client, "POST", "/admin/allowlist/add", json={"email": "demo@example.com"})
-        request(
-            client,
-            "POST",
-            "/simulate_dm",
-            json={"x_handle": "demo", "text": "start demo@example.com"},
-        )
-        request(
-            client,
-            "POST",
-            "/simulate_dm",
-            json={"x_handle": "demo", "text": "https://x.com/1 #tools note: demo"},
-        )
-        request(
-            client, "POST", "/simulate_dm", json={"x_handle": "demo", "text": "https://x.com/2"}
-        )
 
         digest = request(
             client,

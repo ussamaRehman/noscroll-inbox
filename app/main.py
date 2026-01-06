@@ -99,6 +99,15 @@ class AllowlistIn(BaseModel):
     email: str
 
 
+DEMO_EMAIL = "demo@example.com"
+DEMO_HANDLE = "demo"
+
+
+class DemoResetIn(BaseModel):
+    email: str = DEMO_EMAIL
+    x_handle: str = DEMO_HANDLE
+
+
 @app.post("/simulate_dm", response_model=SimulateDMOut)
 def simulate_dm(payload: SimulateDMIn) -> SimulateDMOut:
     parsed = parse_dm(payload.text)
@@ -208,11 +217,12 @@ def digest_sends(email: str, days: int = 1) -> dict:
 
 
 @app.post("/admin/demo/reset")
-def demo_reset() -> dict:
-    STORE.allowlist_clear()
-    STORE.link_delete("demo")
-    STORE.inbox_clear("demo@example.com")
-    return {"ok": True}
+def demo_reset(payload: DemoResetIn | None = None) -> dict:
+    email = payload.email if payload else DEMO_EMAIL
+    x_handle = payload.x_handle if payload else DEMO_HANDLE
+    STORE.reset_demo(email, x_handle)
+    STORE.seed_demo(email, x_handle)
+    return {"ok": True, "email": email, "x_handle": x_handle}
 
 
 @app.post("/admin/reset_all")
