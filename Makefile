@@ -1,6 +1,6 @@
 DB_PATH ?= noscroll.db
 
-.PHONY: lint test ci dev
+.PHONY: lint test ci dev reset-demo
 
 lint:
 	uv run ruff check .
@@ -21,3 +21,6 @@ demo:
 # Example: EMAIL=demo@example.com DAYS=365 make send-digests
 send-digests:
 	DB_PATH=$(DB_PATH) PYTHONPATH=. uv run python tools/send_digests.py
+
+reset-demo:
+	DB_PATH=$(DB_PATH) PYTHONPATH=. uv run python -c "import os; from storage.sqlite_store import SQLiteStore; s=SQLiteStore(db_path=os.environ.get('DB_PATH','noscroll.db')); s.reset_demo('demo@example.com','demo'); s.seed_demo('demo@example.com','demo'); print('ok')"
