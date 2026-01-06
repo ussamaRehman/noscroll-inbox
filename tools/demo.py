@@ -1,38 +1,39 @@
 import json
 import os
 
-import httpx
+from core.digest import build_digest, build_email_preview
+from storage.sqlite_store import SQLiteStore
 
-BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8000")
-
-
-def request(client: httpx.Client, method: str, path: str, **kwargs) -> httpx.Response:
-    resp = client.request(method, f"{BASE_URL}{path}", **kwargs)
-    resp.raise_for_status()
-    return resp
+DEMO_EMAIL = "demo@example.com"
+DEMO_HANDLE = "demo"
+DEMO_DAYS = 365
 
 
 def main() -> None:
-    with httpx.Client(timeout=10) as client:
-        request(client, "POST", "/admin/demo/reset")
+    db_path = os.environ.get("DB_PATH", "noscroll.db")
+    store = SQLiteStore(db_path=db_path)
+    store.init_db()
+    store.reset_demo(DEMO_EMAIL, DEMO_HANDLE)
+    store.seed_demo(DEMO_EMAIL, DEMO_HANDLE)
 
-        digest = request(
-            client,
-            "GET",
-            "/digest",
-            params={"email": "demo@example.com", "days": 365},
-        )
-        preview = request(
-            client,
-            "GET",
-            "/digest/email_preview",
-            params={"email": "demo@example.com", "days": 365},
-        )
+    text, _groups, _total = build_digest(DEMO_EMAIL, DEMO_DAYS, store=store)
+    subject, body, total = build_email_preview(DEMO_EMAIL, DEMO_DAYS, store=store)
 
     print("Digest")
-    print(digest.json()["text"])
+    print(text)
     print("\nEmail Preview")
-    print(json.dumps(preview.json(), indent=2))
+    print(
+        json.dumps(
+            {
+                "email": DEMO_EMAIL,
+                "days": DEMO_DAYS,
+                "subject": subject,
+                "body": body,
+                "total": total,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":
