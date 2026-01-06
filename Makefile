@@ -1,4 +1,5 @@
 DB_PATH ?= noscroll.db
+PORT ?= 8000
 
 .PHONY: lint test ci dev reset-demo
 
@@ -12,7 +13,7 @@ test:
 ci: lint test
 
 dev:
-	DB_PATH=$(DB_PATH) uv run uvicorn app.main:app --reload --port 8000
+	DB_PATH=$(DB_PATH) uv run uvicorn app.main:app --reload --port $(PORT)
 
 # Requires server running via: make dev
 demo:
