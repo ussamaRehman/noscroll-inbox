@@ -1,8 +1,9 @@
 import json
+import os
 
 import httpx
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8000")
 
 
 def request(client: httpx.Client, method: str, path: str, **kwargs) -> httpx.Response:
